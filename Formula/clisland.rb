@@ -2,7 +2,7 @@ class Clisland < Formula
   desc "Coding agent status in the MacBook notch for Claude Code, Codex and Gemini CLI"
   homepage "https://github.com/nevinchanyi/clisland"
   url "https://github.com/nevinchanyi/clisland/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "SHA256"
+  sha256 "1870bfcc0dab9563c953ff95ac35277bb9b62a59045e43ce98322642028f8d20"
   license "MIT"
   head "https://github.com/nevinchanyi/clisland.git", branch: "main"
 
