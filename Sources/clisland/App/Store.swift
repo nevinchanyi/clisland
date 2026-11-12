@@ -308,7 +308,7 @@ final class Store {
             if toast == nil { panelOpen = true }
         } else {
             panelOpen = false
-            if toast != nil { toastTimer?.invalidate(); toastTimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: false) { [weak self] _ in self?.expire() } }
+            if toast != nil { toastTimer?.invalidate(); toastTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in self?.expire() } }
         }
     }
 

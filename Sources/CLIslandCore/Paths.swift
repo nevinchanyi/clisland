@@ -50,6 +50,7 @@ public struct Config: Equatable {
     public var contextWarnPct = 85.0
     public var limitWarnPct = 80.0
     public var doneToastSeconds = 6.0
+    public var hoverLingerSeconds = 3.0
     public var statuslineOriginal: String?
     public var codexNotifyOriginal: [String]?
 
@@ -66,6 +67,7 @@ public struct Config: Equatable {
         c.contextWarnPct = j["context_warn_pct"]?.double ?? c.contextWarnPct
         c.limitWarnPct = j["limit_warn_pct"]?.double ?? c.limitWarnPct
         c.doneToastSeconds = j["done_toast_seconds"]?.double ?? c.doneToastSeconds
+        c.hoverLingerSeconds = j["hover_linger_seconds"]?.double ?? c.hoverLingerSeconds
         c.statuslineOriginal = j["statusline_original"]?.string
         c.codexNotifyOriginal = j["codex_notify_original"]?.array?.compactMap(\.string)
         return c
@@ -82,6 +84,7 @@ public struct Config: Equatable {
             ("context_warn_pct", .number(contextWarnPct)),
             ("limit_warn_pct", .number(limitWarnPct)),
             ("done_toast_seconds", .number(doneToastSeconds)),
+            ("hover_linger_seconds", .number(hoverLingerSeconds)),
             ("statusline_original", .str(statuslineOriginal)),
             ("codex_notify_original", codexNotifyOriginal.map(JSON.strings)),
         ])

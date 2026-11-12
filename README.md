@@ -25,6 +25,7 @@ CLIsland turns the notch into a status surface for **Claude Code**, **Codex CLI*
 | **Usage limits** | Claude and Codex 5‑hour / weekly windows with reset countdowns, warning at 80% |
 | **Stuck detector** | One nudge when a working session goes quiet for 5 minutes |
 | **`clisland run`** | Wrap any long command: get notified with exit code, duration and the failing output |
+| **Hover to expand** | Move the cursor onto the island to see every session; it stays open 3 s after you leave |
 | **Jump to terminal** | Click a session to focus its iTerm2 / Terminal tab (other terminals are brought to front) |
 
 <p align="center">
@@ -101,6 +102,7 @@ clisland demo [--fast]         play fake sessions to preview the UI
 | `context_warn_pct` | `85` | Context warning threshold |
 | `limit_warn_pct` | `80` | Usage limit warning threshold |
 | `done_toast_seconds` | `6` | How long a done notification stays open |
+| `hover_linger_seconds` | `3` | How long the island stays open after the cursor leaves it |
 
 ## How it works
 

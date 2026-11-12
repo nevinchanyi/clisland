@@ -2,11 +2,6 @@ import AppKit
 import CLIslandCore
 import SwiftUI
 
-private struct FrameKey: PreferenceKey {
-    static var defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
-}
-
 private let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
 struct NotchShape: Shape {
@@ -43,8 +38,8 @@ struct NotchRoot: View {
 
     private var mode: Mode {
         if let t = store.toast { return .toast(t.id) }
-        if store.sessions.isEmpty { return .hidden }
-        return store.panelOpen ? .panel : .compact
+        if store.panelOpen { return .panel }
+        return store.sessions.isEmpty ? .hidden : .compact
     }
 
     private var expanded: Bool { mode != .hidden && mode != .compact }
@@ -58,7 +53,7 @@ struct NotchRoot: View {
         switch mode {
         case .hidden: return max(geo.notchWidth, 120)
         case .compact: return geo.notchWidth + wing * 2 + 12
-        case .panel: return max(geo.notchWidth + 180, 560)
+        case .panel: return store.sessions.isEmpty ? max(geo.notchWidth + 120, 420) : max(geo.notchWidth + 180, 560)
         case .toast: return max(geo.notchWidth + 150, 500)
         }
     }
@@ -70,11 +65,12 @@ struct NotchRoot: View {
     var body: some View {
         VStack(spacing: 0) {
             island
-                .background(GeometryReader { g in Color.clear.preference(key: FrameKey.self, value: g.frame(in: .global)) })
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { rect in
+                    onFrame(mode == .hidden ? .zero : rect)
+                }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onPreferenceChange(FrameKey.self) { rect in onFrame(mode == .hidden ? .zero : rect) }
         .onChange(of: mode) { _, m in if m == .hidden { onFrame(.zero) } }
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.42, dampingFraction: 0.78), value: mode)
         .animation(.easeInOut(duration: 0.25), value: showLive)
@@ -583,7 +579,14 @@ struct PanelView: View {
             }
             .padding(.bottom, 4)
             Rectangle().fill(Theme.line).frame(height: 1)
-            if store.sessions.count <= 6 {
+            if store.sessions.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("No agent sessions yet").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(.white)
+                    Text("Start Claude Code, Codex or Gemini CLI, or run `clisland demo`.").font(.system(size: 11.5)).foregroundStyle(Theme.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 8)
+            } else if store.sessions.count <= 6 {
                 rows
             } else {
                 ScrollView(.vertical, showsIndicators: false) { rows }.frame(height: 330)

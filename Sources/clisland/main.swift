@@ -2,7 +2,7 @@ import CLIslandCore
 import Darwin
 import Foundation
 
-let version = "0.1.0"
+let version = "0.1.1"
 
 signal(SIGPIPE, SIG_IGN)
 let args = Array(CommandLine.arguments.dropFirst())
