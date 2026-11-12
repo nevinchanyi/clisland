@@ -2,7 +2,7 @@
 # Builds CLIsland from source and installs it to ~/.local/bin (or $CLISLAND_PREFIX/bin).
 set -euo pipefail
 
-REPO="${CLISLAND_REPO:-https://github.com/OWNER/clisland.git}"
+REPO="${CLISLAND_REPO:-https://github.com/nevinchanyi/clisland.git}"
 REF="${CLISLAND_REF:-main}"
 PREFIX="${CLISLAND_PREFIX:-$HOME/.local}"
 

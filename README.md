@@ -43,14 +43,14 @@ Requires macOS 14+ and the Xcode Command Line Tools (`xcode-select --install`). 
 **Homebrew**
 
 ```sh
-brew tap OWNER/clisland https://github.com/OWNER/clisland && brew install clisland
+brew tap nevinchanyi/clisland https://github.com/nevinchanyi/clisland && brew install clisland
 clisland setup
 ```
 
 **Install script**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/OWNER/clisland/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nevinchanyi/clisland/main/scripts/install.sh | bash
 ```
 
 `clisland setup` detects which agent CLIs you have, adds its hooks, keeps everything else in your config, writes a backup to `~/.clisland/backups/`, and starts the app at login. Restart running agent sessions afterwards.
