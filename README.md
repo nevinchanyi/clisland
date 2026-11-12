@@ -43,7 +43,9 @@ Requires macOS 14+ and the Xcode Command Line Tools (`xcode-select --install`). 
 **Homebrew**
 
 ```sh
-brew tap nevinchanyi/clisland https://github.com/nevinchanyi/clisland && brew install clisland
+brew tap nevinchanyi/clisland https://github.com/nevinchanyi/clisland
+brew trust nevinchanyi/clisland      # newer Homebrew asks you to trust third-party taps
+brew install clisland
 clisland setup
 ```
 
