@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLIsland Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: one dark desk-at-night world; live notch mock on top, concept sheet below in a 2-col grid */
+:root {
+  --bg: #0b0d10;
+  --panel: #14171c;
+  --line: #252a32;
+  --text: #e9ebee;
+  --muted: #8b929d;
+  --claude: #e2805f;
+  --codex: #3fc8a2;
+  --gemini: #8a97ff;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --err: #f87171;
+  --font-display: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --spring: cubic-bezier(.34, 1.36, .5, 1);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+body { padding: 28px 20px 64px; }
+.wrap { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 30px; font-weight: 600; }
+h2 { font-size: 20px; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.muted { color: var(--muted); }
+code, pre, .mono { font-family: var(--font-mono); font-size: 13px; }
+header { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+/* Screen mock */
+.stage { display: flex; flex-direction: column; gap: 14px; }
+.screen {
+  position: relative; height: 380px; border-radius: 18px; overflow: hidden;
+  border: 10px solid #050607; outline: 1px solid var(--line);
+  background:
+    radial-gradient(900px 380px at 20% 120%, rgba(226,128,95,.20), transparent 60%),
+    radial-gradient(700px 360px at 85% 110%, rgba(138,151,255,.22), transparent 60%),
+    radial-gradient(500px 260px at 55% 30%, rgba(63,200,162,.10), transparent 70%),
+    #101318;
+}
+.menubar {
+  position: absolute; inset: 0 0 auto 0; height: 32px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; font-size: 13px; color: rgba(255,255,255,.82); background: rgba(10,12,15,.35); backdrop-filter: blur(8px);
+}
+.menubar .l, .menubar .r { display: flex; gap: 16px; align-items: center; }
+.menubar b { font-weight: 600; }
+.term {
+  position: absolute; left: 40px; top: 70px; width: 46%; height: 250px; border-radius: 10px;
+  background: rgba(14,16,20,.9); border: 1px solid #2a2f37; box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  font-family: var(--font-mono); font-size: 12px; color: #c9ced6; overflow: hidden;
+}
+.term .bar { height: 26px; display: flex; gap: 6px; align-items: center; padding: 0 10px; border-bottom: 1px solid #22262d; color: var(--muted); }
+.term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a3f47; display: inline-block; }
+.term .tabs { display: flex; gap: 2px; margin-left: 10px; }
+.term .tabs span { padding: 2px 8px; border-radius: 5px; font-size: 11px; }
+.term .tabs span.on { background: #23272e; color: var(--text); }
+.term .body { padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; white-space: pre; }
+.term .c { color: var(--claude); }
+.term2 { left: auto; right: 40px; top: 120px; width: 40%; height: 200px; }
+
+/* The notch */
+.notch {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 300px; height: 32px; background: #000; color: #fff; z-index: 5;
+  border-radius: 0 0 14px 14px; overflow: hidden; cursor: default;
+  transition: width .5s var(--spring), height .5s var(--spring), border-radius .4s ease, box-shadow .4s ease;
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+}
+.notch::before, .notch::after {
+  content: ""; position: absolute; top: 0; width: 14px; height: 14px; pointer-events: none;
+}
+.notch.expanded { border-radius: 0 0 26px 26px; box-shadow: 0 18px 40px rgba(0,0,0,.55); }
+.notch .compact {
+  height: 32px; display: grid; grid-template-columns: 1fr 190px 1fr; align-items: center; padding: 0 12px;
+}
+.notch .cam { height: 100%; }
+.glyphs { display: flex; gap: 7px; align-items: center; }
+.g { position: relative; font-size: 14px; line-height: 1; width: 14px; text-align: center; transition: transform .3s var(--spring), opacity .3s; }
+.g.idle { opacity: .45; }
+.g.working { animation: pulse 1.4s ease-in-out infinite; }
+.g .dot { position: absolute; right: -4px; top: -3px; width: 6px; height: 6px; border-radius: 50%; }
+.g.done .dot { background: var(--ok); }
+.g.approval .dot { background: var(--warn); animation: blink 1s steps(2) infinite; }
+.g.error .dot { background: var(--err); }
+.right { display: flex; justify-content: flex-end; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: #cfd3d9; font-variant-numeric: tabular-nums; }
+.ring { transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 3; }
+.ring .trk { stroke: #2a2e35; }
+.ring .val { transition: stroke-dashoffset .6s ease, stroke .3s; stroke-linecap: round; }
+.shimmer {
+  position: absolute; left: 12%; right: 12%; bottom: 0; height: 2px; border-radius: 2px; opacity: 0; transition: opacity .3s;
+  background: linear-gradient(90deg, transparent, var(--sh, var(--claude)), transparent); background-size: 200% 100%;
+  animation: sweep 1.6s linear infinite;
+}
+.notch.is-working .shimmer { opacity: 1; }
+.notch .content { padding: 6px 18px 16px; opacity: 0; transform: translateY(-6px); transition: opacity .25s ease, transform .35s var(--spring); }
+.notch.expanded .content { opacity: 1; transform: none; transition-delay: .12s; }
+
+.toast { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: start; }
+.badge { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; font-weight: 700; position: relative; }
+.badge::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: ripple 1.2s ease-out .15s 2; }
+.badge.ok { background: rgba(74,222,128,.15); color: var(--ok); }
+.badge.warn { background: rgba(251,191,36,.15); color: var(--warn); }
+.badge.err { background: rgba(248,113,113,.15); color: var(--err); }
+.t1 { font-weight: 600; font-size: 14px; display: flex; gap: 6px; align-items: center; }
+.t2 { font-size: 12px; color: #9aa1ab; }
+.t3 { font-size: 12.5px; color: #d6d9de; margin-top: 4px; }
+.cmd { margin-top: 6px; padding: 6px 8px; border-radius: 7px; background: #15181d; border: 1px solid #2a2f37; font-family: var(--font-mono); font-size: 12px; color: #f3d7a1; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.btn {
+  font: 500 12px var(--font-body); color: var(--text); background: #1d2127; border: 1px solid #333943;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { background: #262b33; }
+.btn:focus-visible, .ctl:focus-visible, .row:focus-visible { outline: 2px solid var(--gemini); outline-offset: 2px; }
+.btn.primary { background: var(--text); color: #0b0d10; border-color: var(--text); }
+.bar-ctx { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar-ctx .track { flex: 1; height: 4px; border-radius: 4px; background: #23272e; overflow: hidden; }
+.bar-ctx .fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid #1f2329; }
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: grid; grid-template-columns: 18px 1fr 92px 120px; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 8px; cursor: pointer;
+  font-size: 12.5px; background: none; border: 0; color: inherit; text-align: left; font-family: inherit;
+}
+.row:hover { background: #12151a; }
+.row .nm { font-weight: 600; }
+.row .sub { color: #8f96a0; font-size: 11.5px; }
+.pill { font-family: var(--font-mono); font-size: 10.5px; padding: 2px 7px; border-radius: 999px; justify-self: start; border: 1px solid; }
+.pill.working { color: var(--sh); border-color: currentColor; }
+.pill.idle { color: #8f96a0; border-color: #3a3f47; }
+.pill.done { color: var(--ok); border-color: rgba(74,222,128,.5); }
+.pill.approval { color: var(--warn); border-color: rgba(251,191,36,.5); }
+.pill.error { color: var(--err); border-color: rgba(248,113,113,.5); }
+.mini { display: flex; flex-direction: column; gap: 3px; font-family: var(--font-mono); font-size: 10.5px; color: #9aa1ab; font-variant-numeric: tabular-nums; }
+.mini .track { height: 4px; border-radius: 4px; background: #23272e; overflow: hidden; }
+.mini .fill { height: 100%; }
+
+.cmdlist { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.cmdrow { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 5px 6px 5px 8px; border-radius: 7px; background: #111419; border: 1px solid #23272e; }
+.cmdrow .n { font-family: var(--font-mono); font-size: 10.5px; color: #6f7680; font-variant-numeric: tabular-nums; }
+.cmdrow code { font-size: 12px; color: #e6e9ee; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+.cmdrow code::before { content: "$ "; color: #6f7680; }
+.cmdrow.copied { border-color: rgba(74,222,128,.5); }
+.btn.sm { padding: 3px 9px; font-size: 11.5px; }
+.btn.done { color: var(--ok); border-color: rgba(74,222,128,.5); }
+.cmdfoot { margin-top: 8px; display: flex; gap: 6px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.cmdfoot .k { font-size: 11.5px; color: #8f96a0; }
+.chip { font-family: var(--font-mono); font-size: 10.5px; padding: 2px 7px; border-radius: 999px; color: var(--text); background: #23272e; border: 0; cursor: pointer; margin-left: 6px; }
+
+.notch.shake { animation: shake .45s ease; }
+
+@keyframes pulse { 50% { transform: scale(1.25); opacity: .7; } }
+@keyframes blink { 50% { opacity: .2; } }
+@keyframes sweep { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes ripple { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
+@keyframes shake { 20%, 60% { transform: translateX(calc(-50% - 6px)); } 40%, 80% { transform: translateX(calc(-50% + 6px)); } }
+
+/* Controls */
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ctl {
+  font: 500 13px var(--font-body); color: var(--text); background: var(--panel); border: 1px solid var(--line);
+  padding: 7px 12px; border-radius: 8px; cursor: pointer; display: inline-flex; gap: 7px; align-items: center;
+}
+.ctl:hover { border-color: #3a404a; background: #191d23; }
+.ctl .sw { width: 8px; height: 8px; border-radius: 50%; }
+.ctl.toggle[aria-pressed="true"] { border-color: var(--gemini); }
+.hint { font-size: 12.5px; color: var(--muted); }
+.log {
+  background: #0f1216; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; height: 132px; overflow: auto;
+  font-family: var(--font-mono); font-size: 12px; color: #aab1bb; display: flex; flex-direction: column; gap: 2px;
+}
+.log .k { color: var(--muted); }
+.log .p { color: var(--text); }
+
+/* Concept sheet */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.verdict { border-left: 3px solid var(--ok); }
+.pipeline { display: grid; grid-template-columns: 1.2fr 24px 1fr 24px 1fr 24px 1.2fr; align-items: center; gap: 6px; overflow-x: auto; }
+.node { background: #0f1216; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; min-width: 140px; }
+.node .hd { font-weight: 600; font-size: 13px; }
+.node .src { display: flex; gap: 6px; align-items: center; }
+.arrow { text-align: center; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tablewrap { overflow-x: auto; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+td code { color: #d8dce2; background: #0f1216; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+pre { margin: 0; background: #0f1216; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; color: #d6dae0; line-height: 1.6; }
+pre .cm { color: var(--muted); }
+ol.steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; counter-reset: s; }
+ol.steps li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+ol.steps li::before { content: "Phase " counter(s); font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+ol.steps li .est { font-family: var(--font-mono); font-size: 11.5px; color: var(--gemini); }
+ul.tight { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.legend div { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+@media (max-width: 760px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .term2 { display: none; }
+  .term { width: auto; right: 20px; left: 20px; }
+  .screen { height: 420px; }
+  .menubar .l span:not(:first-child), .menubar .r span:not(:last-child) { display: none; }
+  .pipeline { grid-template-columns: 1fr; }
+  .arrow { transform: rotate(90deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Concept · interactive prototype</div>
+  <h1>CLIsland: your coding agents, living in the MacBook notch</h1>
+  <p class="muted">One glance tells you which terminal is working, which one finished, which one is waiting for approval, and how much context each session has left. Works with Claude Code, Codex CLI and Gemini CLI. Hover the notch, or fire events with the buttons below.</p>
+</header>
+
+<section class="stage" aria-label="Notch simulator">
+  <div class="screen">
+    <div class="menubar">
+      <div class="l"><b>Ghostty</b><span>File</span><span>Edit</span><span>View</span><span>Window</span></div>
+      <div class="r"><span>100%</span><span>Wi-Fi</span><span id="clock">Thu 14:32</span></div>
+    </div>
+
+    <div id="notch" class="notch" tabindex="0" aria-label="Notch: hover or focus to see sessions">
+      <div class="compact">
+        <div class="glyphs" id="glyphs"></div>
+        <div class="cam"></div>
+        <div class="right" id="right"></div>
+      </div>
+      <div class="content" id="content"></div>
+      <div class="shimmer" id="shimmer"></div>
+    </div>
+
+    <div class="term">
+      <div class="bar"><i></i><i></i><i></i>
+        <div class="tabs"><span class="on">api-server · claude</span><span>web-app · codex</span></div>
+      </div>
+      <div class="body"><span class="c">✻ Claude Code</span>
+<span>&gt; add rate limiting to /v1/orders</span>
+<span class="muted">  Read src/routes/orders.ts</span>
+<span class="muted">  Edit src/middleware/rateLimit.ts (+42)</span>
+<span class="muted">  Bash pnpm test orders</span>
+<span id="termStatus" class="c">✻ Working… (esc to interrupt)</span></div>
+    </div>
+    <div class="term term2">
+      <div class="bar"><i></i><i></i><i></i><div class="tabs"><span class="on">infra · gemini</span></div></div>
+      <div class="body"><span style="color:var(--gemini)">✦ Gemini CLI</span>
+<span>&gt; why is the terraform plan drifting?</span>
+<span class="muted">  ReadManyFiles infra/**/*.tf (38 files)</span>
+<span class="muted">  Context: 1.7M / 2M tokens</span></div>
+    </div>
+  </div>
+
+  <div class="controls" role="group" aria-label="Simulate agent events">
+    <button class="ctl" data-ev="claude:done"><span class="sw" style="background:var(--claude)"></span>Claude finishes</button>
+    <button class="ctl" data-ev="claude:approval"><span class="sw" style="background:var(--claude)"></span>Claude asks permission</button>
+    <button class="ctl" data-ev="claude:commands"><span class="sw" style="background:var(--claude)"></span>Claude suggests commands</button>
+    <button class="ctl" data-ev="codex:start"><span class="sw" style="background:var(--codex)"></span>Codex starts turn</button>
+    <button class="ctl" data-ev="codex:done"><span class="sw" style="background:var(--codex)"></span>Codex finishes</button>
+    <button class="ctl" data-ev="gemini:context"><span class="sw" style="background:var(--gemini)"></span>Gemini context high</button>
+    <button class="ctl" data-ev="codex:error"><span class="sw" style="background:var(--err)"></span>Codex error</button>
+    <button class="ctl toggle" id="auto" aria-pressed="true">Auto demo: on</button>
+  </div>
+  <div class="hint">Below: what the CLI hooks would send to the app over a local Unix socket.</div>
+  <div class="log" id="log" aria-live="polite"></div>
+</section>
+
+<section class="legend" aria-label="State colors">
+  <div><i style="background:var(--claude)"></i>Claude Code: coral</div>
+  <div><i style="background:var(--codex)"></i>Codex CLI: teal</div>
+  <div><i style="background:var(--gemini)"></i>Gemini CLI: periwinkle</div>
+  <div><i style="background:var(--ok)"></i>Finished, unread</div>
+  <div><i style="background:var(--warn)"></i>Needs you</div>
+  <div><i style="background:var(--err)"></i>Error / context &gt; 85%</div>
+</section>
+
+<section class="grid2">
+  <div class="card verdict">
+    <h2>Is it possible? Yes.</h2>
+    <ul class="tight">
+      <li>A macOS app can draw a borderless <code>NSPanel</code> over the menu bar, sized to the notch from <code>NSScreen.safeAreaInsets</code> and <code>auxiliaryTopLeftArea</code>. NotchNook and boring.notch do exactly this.</li>
+      <li>All three CLIs can run a shell command on lifecycle events, so they can tell the app what happened without any patching.</li>
+      <li>Context usage is readable: Claude Code passes it to the status line, Codex logs token counts to its session files, Gemini reports session stats.</li>
+      <li>Ship as a signed, notarized app via Homebrew cask, plus <code>npx</code> for the hook setup.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>Notch states</h2>
+    <ul class="tight">
+      <li><b>Idle:</b> slim black pill, one glyph per session, context ring for the busiest one.</li>
+      <li><b>Working:</b> glyph pulses, a light sweep in the agent's color runs under the notch.</li>
+      <li><b>Done:</b> notch drops open with a green ripple, project name, duration and the last reply line. Closes after 5s, leaves a green dot until you look.</li>
+      <li><b>Needs you:</b> amber, stays open. Claude permissions can be approved right here.</li>
+      <li><b>Commands to run:</b> when a reply asks you to run shell commands, each one gets its own Copy button, plus Copy all (one per line) and Copy as one line (joined with <code>&amp;&amp;</code>).</li>
+      <li><b>Hover:</b> full list of sessions, click one to focus its terminal tab.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <h2>How data gets to the notch</h2>
+  <div class="pipeline">
+    <div class="node">
+      <div class="hd">Agent CLIs</div>
+      <div class="src"><span style="color:var(--claude)">✻</span> Claude hooks + statusLine</div>
+      <div class="src"><span style="color:var(--codex)">&gt;_</span> Codex <code>notify</code> + hooks</div>
+      <div class="src"><span style="color:var(--gemini)">✦</span> Gemini hooks</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="hd mono">clisland emit</div><div class="muted">tiny CLI shim, reads hook JSON on stdin, adds TTY and terminal app</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="hd mono">~/.clisland/sock</div><div class="muted">Unix socket, newline JSON, never leaves the Mac</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="hd">CLIsland.app</div><div class="muted">SwiftUI menu bar app, session store, animations, sounds, click to focus terminal</div></div>
+  </div>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Agent</th><th>Turn start / end</th><th>Needs input</th><th>Context %</th><th>Approve from notch</th></tr></thead>
+    <tbody>
+      <tr><td>Claude Code</td><td><code>UserPromptSubmit</code>, <code>Stop</code></td><td><code>Notification</code>, <code>PermissionRequest</code></td><td>statusLine JSON <code>context_window</code></td><td>Yes, hook returns allow / deny</td></tr>
+      <tr><td>Codex CLI</td><td><code>notify</code> → <code>agent-turn-complete</code></td><td>hooks engine (newer builds)</td><td><code>token_count</code> in <code>~/.codex/sessions/*.jsonl</code></td><td>No, jump to terminal</td></tr>
+      <tr><td>Gemini CLI</td><td><code>BeforeAgent</code>, <code>AfterAgent</code></td><td><code>Notification</code></td><td>session stats / telemetry</td><td>Verify, otherwise jump</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Copyable commands: how it works</h2>
+  <ul class="tight">
+    <li>The done event carries the final reply: Codex <code>notify</code> sends <code>last-assistant-message</code>, and Claude's <code>Stop</code> hook can read it from <code>transcript_path</code>.</li>
+    <li>The app pulls fenced <code>bash</code> / <code>sh</code> / <code>zsh</code> / <code>console</code> blocks, strips <code>$ </code> prompts and comments, joins <code>\</code> line continuations, and keeps one command per row.</li>
+    <li>Copy uses <code>NSPasteboard</code>, so no extra permissions. An optional Paste into terminal button would need Accessibility access; keep it opt-in.</li>
+    <li>Commands stay attached to the session: the hover panel shows a <code>3 cmds</code> chip until you dismiss them.</li>
+  </ul>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Install, for any developer</h2>
+<pre><span class="cm"># app (signed + notarized)</span>
+brew install --cask clisland/tap/clisland
+
+<span class="cm"># wire hooks into installed CLIs, with backups</span>
+npx clisland setup
+<span class="cm">#  ✓ ~/.claude/settings.json   hooks + statusLine</span>
+<span class="cm">#  ✓ ~/.codex/config.toml      notify</span>
+<span class="cm">#  ✓ ~/.gemini/settings.json   hooks</span>
+
+npx clisland uninstall   <span class="cm"># restores backups</span></pre>
+  </div>
+  <div class="card">
+    <h2>What a hook entry looks like</h2>
+<pre><span class="cm">// ~/.claude/settings.json (added by setup)</span>
+"hooks": {
+  "Stop": [{ "hooks": [{ "type": "command",
+    "command": "clisland emit --agent claude --event done" }] }],
+  "Notification": [{ "hooks": [{ "type": "command",
+    "command": "clisland emit --agent claude --event attention" }] }]
+}
+
+<span class="cm"># ~/.codex/config.toml</span>
+notify = ["notch", "emit", "--agent", "codex"]</pre>
+  </div>
+</section>
+
+<section class="card">
+  <h2>v1 features</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Feature</th><th>In the notch</th><th>Data source</th></tr></thead>
+    <tbody>
+      <tr><td>Live activity line</td><td>One line under the notch while working: “Editing <code>orders.ts</code>”, “Running <code>pnpm test</code>”</td><td>Claude <code>PreToolUse</code>; Codex tool calls in session JSONL; Gemini tool hooks</td></tr>
+      <tr><td>Task progress</td><td>“3/7 tasks” bar in the panel row and done toast</td><td>Claude <code>PostToolUse</code> on <code>TodoWrite</code>; Codex plan updates in session JSONL</td></tr>
+      <tr><td>Usage limits</td><td>Cost per session, countdown to limit reset, amber at 80% of window</td><td>Claude statusLine <code>cost</code>; Codex <code>rate_limits</code> in <code>token_count</code> events. Verify Claude reset-time source</td></tr>
+      <tr><td>Stuck detector</td><td>Amber “quiet for 6m” on a working session, one nudge, no repeats</td><td>Session store: no event for N minutes (default 5) while status is working</td></tr>
+      <tr><td><code>clisland run -- &lt;cmd&gt;</code></td><td>Any long command becomes a session: duration, exit code, last 20 lines on failure</td><td>Wrapper spawns the command, streams nothing, emits start / done with exit code</td></tr>
+      <tr><td>Copyable commands</td><td>Copy one, Copy all, Copy as one line</td><td>Fenced shell blocks in the last reply</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="stage">
+  <h2>Build plan</h2>
+  <ol class="steps">
+    <li><b>Notch window</b><span class="muted">Swift + SwiftUI, <code>NSPanel</code> at status-bar level, collapse / expand springs, hover detection, multi-display fallback for Macs without a notch.</span><span class="est">~1 week</span></li>
+    <li><b>Event bus</b><span class="muted"><code>clisland</code> CLI in Swift, Unix socket server in the app, session store keyed by agent + session id + TTY. Event schema covers activity, tasks and usage from day one.</span><span class="est">2–3 days</span></li>
+    <li><b>Claude Code first</b><span class="muted">Hooks for start, done, attention, permission; statusLine forwarder for context % and cost; approve / deny round-trip; live activity line from <code>PreToolUse</code>; task progress from <code>TodoWrite</code>; copyable commands from the last reply.</span><span class="est">5–6 days</span></li>
+    <li><b>Codex + Gemini</b><span class="muted">Codex <code>notify</code> plus a session JSONL watcher for tokens, rate limits, tool calls and plan steps; Gemini hooks for activity and done.</span><span class="est">~1 week</span></li>
+    <li><b>Usage + stuck detector</b><span class="muted">Cost per session, limit-reset countdown with 80% warning; quiet-session timer with configurable threshold and a single nudge.</span><span class="est">3–4 days</span></li>
+    <li><b>clisland run</b><span class="muted"><code>clisland run -- make build</code> wraps any command: duration, exit code, tail of output on failure. Optional shell alias for <code>make</code>, <code>docker</code>, <code>gh run watch</code>.</span><span class="est">2–3 days</span></li>
+    <li><b>Focus terminal</b><span class="muted">Map TTY to tab in iTerm2, Ghostty, Terminal, Warp, VS Code via AppleScript / URL schemes.</span><span class="est">3–5 days</span></li>
+    <li><b>Ship</b><span class="muted">Developer ID signing, notarization, Sparkle updates, Homebrew tap, npm setup package, README GIF.</span><span class="est">2–3 days</span></li>
+  </ol>
+</section>
+
+<section class="card">
+  <h2>Before building: open-source prior art</h2>
+  <p class="muted">Several free, MIT-licensed apps already do parts of this: Claude Island, CodeIsland, Coder Island (Claude + Codex), Claude Peek, Notchy, Open Island. Try two of them for a day, then decide whether to fork one or build fresh with multi-agent context tracking as the differentiator.</p>
+</section>
+
+</div>
+
+<script>
+(function () {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const C = { claude: 'var(--claude)', codex: 'var(--codex)', gemini: 'var(--gemini)' };
+  const S = {
+    claude: { id: 'claude', name: 'Claude Code', glyph: '✻', project: 'api-server', term: 'Ghostty · tab 1', ctx: 62, status: 'working', since: Date.now() - 134000 },
+    codex:  { id: 'codex',  name: 'Codex CLI',   glyph: '>_', project: 'web-app',   term: 'Ghostty · tab 2', ctx: 31, status: 'idle',    since: Date.now() - 600000 },
+    gemini: { id: 'gemini', name: 'Gemini CLI',  glyph: '✦', project: 'infra',     term: 'iTerm2 · window 2', ctx: 84, status: 'idle',  since: Date.now() - 300000 }
+  };
+  const notch = document.getElementById('notch');
+  const glyphs = document.getElementById('glyphs');
+  const right = document.getElementById('right');
+  const content = document.getElementById('content');
+  const shimmer = document.getElementById('shimmer');
+  const logEl = document.getElementById('log');
+  const termStatus = document.getElementById('termStatus');
+
+  let mode = 'idle', hovering = false, timer = null, queue = [];
+
+  const ctxColor = p => p >= 85 ? 'var(--err)' : p >= 70 ? 'var(--warn)' : 'var(--ok)';
+  const fmt = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; };
+
+  function ring(p, size) {
+    const r = size / 2 - 2.5, c = 2 * Math.PI * r;
+    return '<svg class="ring" width="' + size + '" height="' + size + '" aria-hidden="true"><circle class="trk" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '"/>' +
+      '<circle class="val" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" stroke="' + ctxColor(p) + '" stroke-dasharray="' + c + '" stroke-dashoffset="' + (c * (1 - p / 100)) + '"/></svg>';
+  }
+
+  function renderCompact() {
+    glyphs.innerHTML = Object.values(S).map(s =>
+      '<span class="g ' + s.status + '" style="color:' + C[s.id] + ';font-size:' + (s.id === 'codex' ? '10px' : '14px') + ';width:' + (s.id === 'codex' ? '16px' : '14px') + '" title="' + s.name + '">' + s.glyph.replace('>', '&gt;') + '<span class="dot"></span></span>'
+    ).join('');
+    const worst = Object.values(S).reduce((a, b) => (b.ctx > a.ctx ? b : a));
+    right.innerHTML = ring(worst.ctx, 18) + '<span>' + worst.ctx + '%</span>';
+    const w = Object.values(S).find(s => s.status === 'working');
+    notch.classList.toggle('is-working', !!w);
+    if (w) shimmer.style.setProperty('--sh', C[w.id]);
+    termStatus.textContent = S.claude.status === 'working' ? '✻ Working… (esc to interrupt)' : S.claude.status === 'approval' ? '? Allow Bash(pnpm prisma migrate reset)? [y/n]' : '✓ Done. Rate limiting added, 4 tests passing.';
+  }
+
+  function setSize(w, h) { notch.style.width = w + 'px'; notch.style.height = h + 'px'; }
+  function collapse() {
+    mode = 'idle'; notch.classList.remove('expanded'); setSize(300, 32);
+    setTimeout(() => { if (mode === 'idle') content.innerHTML = ''; }, 300);
+  }
+
+  function ctxBar(s) {
+    return '<div class="bar-ctx"><span>context</span><div class="track"><div class="fill" style="width:' + s.ctx + '%;background:' + ctxColor(s.ctx) + '"></div></div><span>' + s.ctx + '%</span></div>';
+  }
+
+  function show(kind, s, extra) {
+    clearTimeout(timer);
+    mode = kind; notch.classList.add('expanded');
+    let html = '', h = 150, hold = 5000;
+    if (kind === 'done') {
+      html = '<div class="toast"><div class="badge ok">✓</div><div><div class="t1"><span style="color:' + C[s.id] + '">' + s.glyph.replace('>', '&gt;') + '</span>' + s.name + ' finished</div>' +
+        '<div class="t2">' + s.project + ' · ' + s.term + ' · ' + fmt(Date.now() - s.since) + '</div><div class="t3">' + extra + '</div></div>' +
+        '<div class="actions"><button class="btn primary" data-act="focus" data-id="' + s.id + '">Open</button></div></div>' + ctxBar(s);
+      h = 152;
+    } else if (kind === 'approval') {
+      html = '<div class="toast"><div class="badge warn">?</div><div><div class="t1"><span style="color:' + C[s.id] + '">' + s.glyph + '</span>' + s.name + ' wants to run</div>' +
+        '<div class="t2">' + s.project + ' · ' + s.term + '</div><div class="cmd">' + extra + '</div></div>' +
+        '<div class="actions"><button class="btn" data-act="deny" data-id="' + s.id + '">Deny</button><button class="btn primary" data-act="allow" data-id="' + s.id + '">Allow once</button></div></div>';
+      h = 140; hold = 0;
+    } else if (kind === 'context') {
+      html = '<div class="toast"><div class="badge err">' + s.ctx + '</div><div><div class="t1"><span style="color:' + C[s.id] + '">' + s.glyph + '</span>' + s.name + ' context is almost full</div>' +
+        '<div class="t2">' + s.project + ' · ' + s.term + '</div><div class="t3">' + extra + '</div></div>' +
+        '<div class="actions"><button class="btn" data-act="focus" data-id="' + s.id + '">Open</button></div></div>' + ctxBar(s);
+      h = 140;
+    } else if (kind === 'error') {
+      html = '<div class="toast"><div class="badge err">!</div><div><div class="t1"><span style="color:' + C[s.id] + '">&gt;_</span>' + s.name + ' stopped with an error</div>' +
+        '<div class="t2">' + s.project + ' · ' + s.term + '</div><div class="t3">' + extra + '</div></div>' +
+        '<div class="actions"><button class="btn primary" data-act="focus" data-id="' + s.id + '">Open</button></div></div>';
+      h = 116;
+      if (!reduce) { notch.classList.remove('shake'); void notch.offsetWidth; notch.classList.add('shake'); }
+    } else if (kind === 'commands') {
+      const cmds = s.cmds || [];
+      html = '<div class="toast"><div class="badge ok">$</div><div><div class="t1"><span style="color:' + C[s.id] + '">' + s.glyph + '</span>' + s.name + ' wants you to run ' + cmds.length + ' commands</div>' +
+        '<div class="t2">' + s.project + ' · ' + s.term + '</div></div>' +
+        '<div class="actions"><button class="btn sm" data-act="dismiss" data-id="' + s.id + '">Dismiss</button></div></div>' +
+        '<div class="cmdlist">' + cmds.map((c, i) => '<div class="cmdrow" id="cmd-' + i + '"><span class="n">' + (i + 1) + '</span><code>' + esc(c) + '</code>' +
+          '<button class="btn sm" data-act="copy" data-id="' + s.id + '" data-i="' + i + '" aria-label="Copy command ' + (i + 1) + '">Copy</button></div>').join('') + '</div>' +
+        '<div class="cmdfoot"><span class="k">Copy one by one, or everything at once</span><span class="actions">' +
+        '<button class="btn sm" data-act="copyline" data-id="' + s.id + '">Copy as one line (&amp;&amp;)</button>' +
+        '<button class="btn sm primary" data-act="copyall" data-id="' + s.id + '">Copy all ' + cmds.length + '</button></span></div>';
+      h = 112 + cmds.length * 37 + 40; hold = 15000;
+    } else if (kind === 'panel') {
+      const list = Object.values(S);
+      const working = list.filter(s => s.status === 'working').length;
+      html = '<div class="panel-head"><span>' + list.length + ' sessions · ' + working + ' working</span><span>click to focus terminal</span></div><div class="rows">' +
+        list.map(s => '<button class="row" data-act="focus" data-id="' + s.id + '"><span style="color:' + C[s.id] + ';font-weight:700">' + s.glyph.replace('>', '&gt;') + '</span>' +
+          '<span><span class="nm">' + s.project + '</span> <span class="sub">' + s.name + ' · ' + s.term + '</span>' +
+          (s.cmds && s.cmds.length ? '<span class="chip" data-act="cmds" data-id="' + s.id + '" title="Show commands to copy">' + s.cmds.length + ' cmds</span>' : '') + '</span>' +
+          '<span class="pill ' + s.status + '" style="--sh:' + C[s.id] + '">' + ({ working: 'working ' + fmt(Date.now() - s.since), idle: 'idle', done: 'done', approval: 'needs you', error: 'error' })[s.status] + '</span>' +
+          '<span class="mini"><span>' + s.ctx + '% context</span><span class="track"><span class="fill" style="display:block;width:' + s.ctx + '%;background:' + ctxColor(s.ctx) + '"></span></span></span></button>').join('') + '</div>';
+      h = 196; hold = 0;
+    }
+    content.innerHTML = html;
+    setSize(kind === 'panel' || kind === 'commands' ? 560 : 500, h);
+    curHold = hold;
+    if (hold && !hovering) timer = setTimeout(next, hold);
+  }
+
+  let curHold = 0;
+  function esc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // Advance to the next queued toast; fall back to the session list while hovered
+  function next(force) {
+    if (hovering && !force) return;
+    const pending = Object.values(S).find(s => s.status === 'approval');
+    if (queue.length) { const q = queue.shift(); show(q.kind, S[q.id], q.extra); }
+    else if (pending) show('approval', pending, 'pnpm prisma migrate reset --force');
+    else if (hovering) show('panel');
+    else collapse();
+  }
+
+  function enqueue(kind, id, extra) {
+    if (mode === 'idle' || (mode === 'panel' && !hovering)) show(kind, S[id], extra);
+    else queue.push({ kind, id, extra });
+  }
+
+  async function copyText(text, btn, label) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+      ta.remove();
+    }
+    btn.textContent = ok ? 'Copied' : 'Copy blocked';
+    btn.classList.toggle('done', ok);
+    setTimeout(() => { btn.textContent = label; btn.classList.remove('done'); }, 1600);
+    log('pbcopy', { chars: text.length, lines: text.split('\n').length, ok });
+  }
+
+  function log(cmd, payload) {
+    const t = new Date().toTimeString().slice(0, 8);
+    const line = document.createElement('div');
+    line.innerHTML = '<span class="k">' + t + '</span> <span class="p">$ ' + cmd + '</span>  <span class="k">' + JSON.stringify(payload) + '</span>';
+    logEl.appendChild(line);
+    while (logEl.children.length > 40) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  const CMDS = [
+    'cd ~/api-server',
+    'pnpm add @upstash/ratelimit',
+    'pnpm prisma migrate dev --name add_rate_limits',
+    'pnpm test orders'
+  ];
+
+  const MSG = {
+    claude: 'Added token-bucket rate limiting to /v1/orders, 4 tests passing.',
+    codex: 'Migrated the settings page to the new form components.'
+  };
+
+  function fire(ev) {
+    const [id, kind] = ev.split(':');
+    const s = S[id];
+    if (kind === 'start') {
+      s.status = 'working'; s.since = Date.now();
+      log('clisland emit --agent ' + id + ' --event start', { session: id + '-7f3a', cwd: '~/' + s.project, tty: '/dev/ttys004' });
+    } else if (kind === 'done') {
+      if (s.status !== 'working') s.since = Date.now() - (60000 + Math.random() * 180000);
+      s.status = 'done'; s.ctx = Math.min(99, s.ctx + 4);
+      log('clisland emit --agent ' + id + ' --event done', { session: id + '-7f3a', cwd: '~/' + s.project, context_pct: s.ctx, last_message: MSG[id] });
+      enqueue('done', id, MSG[id]);
+    } else if (kind === 'approval') {
+      s.status = 'approval';
+      log('clisland emit --agent claude --event permission', { tool: 'Bash', input: 'pnpm prisma migrate reset --force', wait_for_decision: true });
+      enqueue('approval', id, 'pnpm prisma migrate reset --force');
+    } else if (kind === 'commands') {
+      s.status = 'done';
+      s.cmds = CMDS.slice();
+      log('clisland emit --agent claude --event done', { session: 'claude-7f3a', last_message: 'Run these to finish the setup: ```bash …```', commands_found: s.cmds.length });
+      enqueue('commands', id);
+    } else if (kind === 'context') {
+      s.ctx = 92;
+      log('clisland emit --agent gemini --event context', { session: 'gemini-19c2', context_pct: 92, tokens: '1.84M / 2M' });
+      enqueue('context', id, '92% used. Run /compress or start a fresh session soon.');
+    } else if (kind === 'error') {
+      s.status = 'error';
+      log('clisland emit --agent codex --event error', { session: 'codex-a01e', error: 'stream disconnected before completion' });
+      enqueue('error', id, 'stream disconnected before completion. Retry in the terminal.');
+    }
+    renderCompact();
+    if (mode === 'panel') show('panel');
+  }
+
+  notch.addEventListener('mouseenter', () => { hovering = true; clearTimeout(timer); if (mode === 'idle') show('panel'); });
+  notch.addEventListener('mouseleave', () => {
+    hovering = false;
+    if (mode === 'panel') next();
+    else if (curHold) { clearTimeout(timer); timer = setTimeout(next, 2500); }
+  });
+  notch.addEventListener('focus', () => { if (!hovering) { hovering = true; clearTimeout(timer); if (mode === 'idle') show('panel'); } });
+  notch.addEventListener('blur', e => { if (!notch.contains(e.relatedTarget)) { hovering = false; next(); } });
+  notch.addEventListener('keydown', e => { if (e.key === 'Escape') { hovering = false; notch.blur(); collapse(); } });
+
+  content.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const s = S[b.dataset.id], act = b.dataset.act;
+    if (act === 'copy' || act === 'copyall' || act === 'copyline') {
+      e.stopPropagation();
+      const cmds = s.cmds || [];
+      const text = act === 'copy' ? cmds[+b.dataset.i] : act === 'copyall' ? cmds.join('\n') : cmds.join(' && ');
+      if (act === 'copy') document.getElementById('cmd-' + b.dataset.i).classList.add('copied');
+      copyText(text, b, b.textContent);
+      clearTimeout(timer);
+      return;
+    }
+    if (act === 'cmds') { e.stopPropagation(); show('commands', s); return; }
+    if (act === 'dismiss') {
+      s.cmds = null; if (s.status === 'done') s.status = 'idle';
+      renderCompact(); next(true); return;
+    }
+    if (act === 'allow' || act === 'deny') {
+      s.status = act === 'allow' ? 'working' : 'idle'; s.since = Date.now();
+      log('clisland → hook reply', { decision: act, tool: 'Bash' });
+    } else if (act === 'focus') {
+      if (s.status === 'done' || s.status === 'error') s.status = 'idle';
+      log('osascript focus', { app: s.term.split(' · ')[0], target: s.term.split(' · ')[1] });
+    }
+    renderCompact();
+    next(true);
+  });
+
+  document.querySelectorAll('[data-ev]').forEach(b => b.addEventListener('click', () => { stopAuto(); fire(b.dataset.ev); }));
+
+  // Auto demo loop
+  const script = [
+    [1800, 'claude:done'], [6500, 'codex:start'], [4000, 'gemini:context'], [5500, 'claude:approval'],
+    [4500, 'claude:allow'], [3000, 'codex:done'], [6000, 'claude:commands'], [9000, 'codex:start'], [3500, 'codex:error'], [6000, 'claude:done'], [6000, 'reset']
+  ];
+  let autoOn = !reduce, step = 0, autoTimer = null;
+  const autoBtn = document.getElementById('auto');
+  function runAuto() {
+    if (!autoOn) return;
+    const [delay, ev] = script[step % script.length];
+    autoTimer = setTimeout(() => {
+      if (ev === 'claude:allow') {
+        if (S.claude.status === 'approval') { S.claude.status = 'working'; S.claude.since = Date.now(); log('clisland → hook reply', { decision: 'allow', tool: 'Bash' }); renderCompact(); if (!hovering) next(); }
+      } else if (ev === 'reset') {
+        S.claude.status = 'working'; S.claude.since = Date.now(); S.claude.ctx = 62; S.codex.status = 'idle'; S.codex.ctx = 31; S.gemini.ctx = 84; S.claude.cmds = null; renderCompact();
+      } else fire(ev);
+      step++; runAuto();
+    }, delay);
+  }
+  function stopAuto() { autoOn = false; clearTimeout(autoTimer); autoBtn.setAttribute('aria-pressed', 'false'); autoBtn.textContent = 'Auto demo: off'; }
+  autoBtn.addEventListener('click', () => {
+    if (autoOn) stopAuto();
+    else { autoOn = true; autoBtn.setAttribute('aria-pressed', 'true'); autoBtn.textContent = 'Auto demo: on'; runAuto(); }
+  });
+  if (!autoOn) { autoBtn.setAttribute('aria-pressed', 'false'); autoBtn.textContent = 'Auto demo: off'; }
+
+  log('clisland emit --agent claude --event start', { session: 'claude-7f3a', cwd: '~/api-server', tty: '/dev/ttys003' });
+  renderCompact();
+  runAuto();
+})();
+</script>
+</body>
+</html>
